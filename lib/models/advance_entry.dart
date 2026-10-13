@@ -1,60 +1,57 @@
-class WorkDay {
-  WorkDay({
+enum AdvanceStatus { pending, approved, rejected }
+
+class AdvanceEntry {
+  AdvanceEntry({
+    required this.id,
     required this.date,
-    required this.startTime,
-    required this.endTime,
-    required this.hours,
-    required this.rate,
-    required this.total,
+    required this.amount,
     required this.note,
+    required this.status,
   });
 
+  final String id;
   final DateTime date;
-  final String startTime;
-  final String endTime;
-  final double hours;
-  final double rate;
-  final double total;
+  final double amount;
   final String note;
+  final AdvanceStatus status;
 
-  factory WorkDay.fromJson(Map<String, dynamic> json) {
-    return WorkDay(
+  factory AdvanceEntry.fromJson(Map<String, dynamic> json) {
+    return AdvanceEntry(
+      id: json['id'] as String? ?? '${DateTime.now().millisecondsSinceEpoch}',
       date: DateTime.parse(json['date'] as String),
-      startTime: json['startTime'] as String,
-      endTime: json['endTime'] as String,
-      hours: (json['hours'] as num).toDouble(),
-      rate: (json['rate'] as num).toDouble(),
-      total: (json['total'] as num).toDouble(),
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       note: json['note'] as String? ?? '',
+      status: _parseStatus(json['status'] as String? ?? 'pending'),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'date': date.toIso8601String(),
-      'startTime': startTime,
-      'endTime': endTime,
-      'hours': hours,
-      'rate': rate,
-      'total': total,
-      'note': note,
-    };
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'date': date.toIso8601String(),
+        'amount': amount,
+        'note': note,
+        'status': status.name,
+      };
+
+  static AdvanceStatus _parseStatus(String value) {
+    switch (value) {
+      case 'approved':
+        return AdvanceStatus.approved;
+      case 'rejected':
+        return AdvanceStatus.rejected;
+      default:
+        return AdvanceStatus.pending;
+    }
   }
 
-  static double calculateHours(String start, String end) {
-    final startParts = start.split(':');
-    final endParts = end.split(':');
-
-    if (startParts.length != 2 || endParts.length != 2) {
-      return 0;
+  static String statusLabel(AdvanceStatus status) {
+    switch (status) {
+      case AdvanceStatus.pending:
+        return 'მოლოდინში';
+      case AdvanceStatus.approved:
+        return 'დადასტურებული';
+      case AdvanceStatus.rejected:
+        return 'უარყოფილი';
     }
-
-    final startMinutes = (int.parse(startParts[0]) * 60) + int.parse(startParts[1]);
-    final endMinutes = (int.parse(endParts[0]) * 60) + int.parse(endParts[1]);
-
-    final diff = endMinutes - startMinutes;
-    if (diff <= 0) return 0;
-
-    return diff / 60.0;
   }
 }
