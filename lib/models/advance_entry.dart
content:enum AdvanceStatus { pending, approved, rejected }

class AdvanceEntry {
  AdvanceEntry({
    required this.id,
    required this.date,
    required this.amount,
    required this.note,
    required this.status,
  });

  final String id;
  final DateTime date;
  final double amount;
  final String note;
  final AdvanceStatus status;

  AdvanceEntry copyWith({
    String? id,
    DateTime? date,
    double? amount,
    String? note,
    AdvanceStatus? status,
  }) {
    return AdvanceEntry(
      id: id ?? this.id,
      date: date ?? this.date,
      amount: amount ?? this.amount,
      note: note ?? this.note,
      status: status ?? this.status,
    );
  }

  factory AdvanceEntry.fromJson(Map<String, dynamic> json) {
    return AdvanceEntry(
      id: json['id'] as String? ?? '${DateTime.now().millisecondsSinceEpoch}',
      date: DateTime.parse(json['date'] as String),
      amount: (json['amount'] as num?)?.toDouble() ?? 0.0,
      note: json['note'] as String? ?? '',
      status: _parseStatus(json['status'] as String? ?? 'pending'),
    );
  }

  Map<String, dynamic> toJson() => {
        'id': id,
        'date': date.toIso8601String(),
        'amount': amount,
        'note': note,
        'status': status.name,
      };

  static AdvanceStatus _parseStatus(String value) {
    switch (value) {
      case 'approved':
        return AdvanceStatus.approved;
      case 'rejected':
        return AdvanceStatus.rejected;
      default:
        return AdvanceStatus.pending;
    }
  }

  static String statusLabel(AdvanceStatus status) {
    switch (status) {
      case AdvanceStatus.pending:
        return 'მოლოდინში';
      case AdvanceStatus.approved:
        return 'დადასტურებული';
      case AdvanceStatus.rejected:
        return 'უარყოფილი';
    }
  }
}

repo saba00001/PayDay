@@ -1,0 +1,157 @@
+import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
+
+import 'models/advance_entry.dart';
+import 'models/work_day.dart';
+import 'pages/add_workday_page.dart';
+import 'pages/advances_page.dart';
+import 'pages/history_page.dart';
+import 'pages/home_page.dart';
+import 'services/storage_service.dart';
+import 'theme/app_theme.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  await StorageService.init();
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => PayDayStore(),
+      child: const PayDayApp(),
+    ),
+  );
+}
+
+class PayDayApp extends StatelessWidget {
+  const PayDayApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'PayDay',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.darkTheme,
+      home: const HomePage(),
+    );
+  }
+}
+
+class PayDayStore extends ChangeNotifier {
+  PayDayStore() {
+    load();
+  }
+
+  List<WorkDay> workDays = [];
+  List<AdvanceEntry> advances = [];
+
+  Future<void> load() async {
+    workDays = StorageService.loadWorkDays();
+    advances = StorageService.loadAdvances();
+
+    if (workDays.isEmpty && advances.isEmpty) {
+      _seedDemoData();
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> addWorkDay(WorkDay day) async {
+    workDays = [...workDays, day];
+    workDays.sort((a, b) => a.date.compareTo(b.date));
+    await StorageService.saveWorkDays(workDays);
+    notifyListeners();
+  }
+
+  Future<void> addAdvance(AdvanceEntry entry) async {
+    advances = [...advances, entry];
+    advances.sort((a, b) => b.date.compareTo(a.date));
+    await StorageService.saveAdvances(advances);
+    notifyListeners();
+  }
+
+  Future<void> approveAdvance(String id) async {
+    final index = advances.indexWhere((entry) => entry.id == id);
+    if (index >= 0) {
+      advances[index] = advances[index].copyWith(status: AdvanceStatus.approved);
+      await StorageService.saveAdvances(advances);
+      notifyListeners();
+    }
+  }
+
+  Future<void> rejectAdvance(String id) async {
+    final index = advances.indexWhere((entry) => entry.id == id);
+    if (index >= 0) {
+      advances[index] = advances[index].copyWith(status: AdvanceStatus.rejected);
+      await StorageService.saveAdvances(advances);
+      notifyListeners();
+    }
+  }
+
+  double get totalEarned =>
+      workDays.fold<double>(0, (sum, day) => sum + day.total);
+
+  double get approvedAdvances => advances
+      .where((entry) => entry.status == AdvanceStatus.approved)
+      .fold<double>(0, (sum, entry) => sum + entry.amount);
+
+  double get pendingAdvances => advances
+      .where((entry) => entry.status == AdvanceStatus.pending)
+      .fold<double>(0, (sum, entry) => sum + entry.amount);
+
+  double get balance => totalEarned - approvedAdvances;
+
+  List<WorkDay> get currentMonthDays {
+    final now = DateTime.now();
+    return workDays
+        .where((day) => day.date.year == now.year && day.date.month == now.month)
+        .toList();
+  }
+
+  double get currentMonthEarnings => currentMonthDays.fold<double>(
+        0,
+        (sum, day) => sum + day.total,
+      );
+
+  double get currentMonthHours => currentMonthDays.fold<double>(
+        0,
+        (sum, day) => sum + day.hours,
+      );
+
+  void _seedDemoData() {
+    final now = DateTime.now();
+    final sampleWorkday = WorkDay(
+      date: now.subtract(const Duration(days: 2)),
+      startTime: '09:00',
+      endTime: '17:00',
+      hours: 8,
+      rate: 60,
+      total: 480,
+      note: 'სტანდარტული სამუშაო დღე',
+    );
+
+    final sampleWorkday2 = WorkDay(
+      date: now.subtract(const Duration(days: 7)),
+      startTime: '10:00',
+      endTime: '18:00',
+      hours: 8,
+      rate: 90,
+      total: 720,
+      note: 'მაღალი განაკვეთი',
+    );
+
+    final sampleAdvance = AdvanceEntry(
+      id: 'demo-advance-1',
+      date: now.subtract(const Duration(days: 3)),
+      amount: 200,
+      note: 'ავანსის მოთხოვნა',
+      status: AdvanceStatus.pending,
+    );
+
+    workDays = [sampleWorkday2, sampleWorkday];
+    advances = [sampleAdvance];
+    StorageService.saveWorkDays(workDays);
+    StorageService.saveAdvances(advances);
+  }
+}

@@ -1,0 +1,71 @@
+import 'package:flutter/material.dart';
+
+class AppTheme {
+  static const Color background = Color(0xFF0B1015);
+  static const Color card = Color(0xFF121A22);
+  static const Color panel = Color(0xFF171F29);
+  static const Color primary = Color(0xFF5AE0A3);
+  static const Color primarySoft = Color(0xFF9BECC3);
+  static const Color accent = Color(0xFF65D6FF);
+  static const Color text = Color(0xFFF5F7FA);
+  static const Color muted = Color(0xFF9AA9B5);
+  static const Color warning = Color(0xFFF3C969);
+
+  static ThemeData get darkTheme {
+    final base = ThemeData(
+      brightness: Brightness.dark,
+      useMaterial3: true,
+      scaffoldBackgroundColor: background,
+      colorScheme: const ColorScheme.dark(
+        primary: primary,
+        secondary: primarySoft,
+        surface: card,
+        background: background,
+        onBackground: text,
+        onPrimary: Color(0xFF041A12),
+        onSurface: text,
+      ),
+      fontFamily: 'Roboto',
+    );
+
+    return base.copyWith(
+      appBarTheme: const AppBarTheme(
+        backgroundColor: background,
+        elevation: 0,
+        iconTheme: IconThemeData(color: text),
+        titleTextStyle: TextStyle(
+          color: text,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      cardTheme: CardTheme(
+        color: card,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.03),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: primary),
+        ),
+      ),
+      textTheme: base.textTheme.apply(
+        bodyColor: text,
+        displayColor: text,
+      ),
+    );
+  }
+}

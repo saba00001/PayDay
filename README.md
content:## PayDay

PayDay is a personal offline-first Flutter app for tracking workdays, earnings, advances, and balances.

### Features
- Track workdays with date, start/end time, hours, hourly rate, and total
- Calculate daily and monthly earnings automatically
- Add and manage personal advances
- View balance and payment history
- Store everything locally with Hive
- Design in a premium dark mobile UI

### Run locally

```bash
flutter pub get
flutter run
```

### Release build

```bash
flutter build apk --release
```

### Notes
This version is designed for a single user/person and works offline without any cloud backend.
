@@ -1,0 +1,193 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../main.dart';
+import '../models/advance_entry.dart';
+import '../theme/app_theme.dart';
+
+class HistoryPage extends StatelessWidget {
+  const HistoryPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(title: const Text('ისტორია / ბალანსი')),
+      body: Consumer<PayDayStore>(
+        builder: (_, store, __) {
+          final entries = <_HistoryEntry>[];
+
+          for (final day in store.workDays) {
+            entries.add(
+              _HistoryEntry(
+                title: 'სამუშაო დღე',
+                amount: day.total,
+                date: day.date,
+                isCredit: true,
+              ),
+            );
+          }
+
+          for (final entry in store.advances) {
+            entries.add(
+              _HistoryEntry(
+                title: 'ავანსი',
+                amount: entry.amount,
+                date: entry.date,
+                isCredit: false,
+                status: entry.status,
+              ),
+            );
+          }
+
+          entries.sort((a, b) => b.date.compareTo(a.date));
+
+          return SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.card,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'ბალანსი',
+                            style: TextStyle(color: AppTheme.muted, fontSize: 12),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _currency(store.balance),
+                            style: TextStyle(
+                              color: AppTheme.primarySoft,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withOpacity(0.14),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'სულ: ${_currency(store.totalEarned)}',
+                          style: TextStyle(
+                            color: AppTheme.primarySoft,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'გადახდის ისტორია',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.text,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (entries.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: AppTheme.card,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Text(
+                      'ჯერ არ გაქვთ ისტორია.',
+                      style: TextStyle(color: AppTheme.muted),
+                    ),
+                  )
+                else
+                  ...entries.map((entry) {
+                    final status = entry.status != null
+                        ? AdvanceEntry.statusLabel(entry.status!)
+                        : 'დასრულებული';
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppTheme.card,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                entry.title,
+                                style: TextStyle(
+                                  color: AppTheme.text,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                DateFormat('dd MMM yyyy').format(entry.date),
+                                style: TextStyle(color: AppTheme.muted, fontSize: 12),
+                              ),
+                              if (entry.status != null)
+                                Text(
+                                  status,
+                                  style: TextStyle(color: AppTheme.muted, fontSize: 11),
+                                ),
+                            ],
+                          ),
+                          Text(
+                            '${entry.isCredit ? '+' : '-'}${_currency(entry.amount)}',
+                            style: TextStyle(
+                              color: entry.isCredit ? AppTheme.primarySoft : AppTheme.warning,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  static String _currency(double value) {
+    return '${value.toStringAsFixed(0)} ₾';
+  }
+}
+
+class _HistoryEntry {
+  _HistoryEntry({
+    required this.title,
+    required this.amount,
+    required this.date,
+    required this.isCredit,
+    this.status,
+  });
+
+  final String title;
+  final double amount;
+  final DateTime date;
+  final bool isCredit;
+  final AdvanceStatus? status;
+}
+

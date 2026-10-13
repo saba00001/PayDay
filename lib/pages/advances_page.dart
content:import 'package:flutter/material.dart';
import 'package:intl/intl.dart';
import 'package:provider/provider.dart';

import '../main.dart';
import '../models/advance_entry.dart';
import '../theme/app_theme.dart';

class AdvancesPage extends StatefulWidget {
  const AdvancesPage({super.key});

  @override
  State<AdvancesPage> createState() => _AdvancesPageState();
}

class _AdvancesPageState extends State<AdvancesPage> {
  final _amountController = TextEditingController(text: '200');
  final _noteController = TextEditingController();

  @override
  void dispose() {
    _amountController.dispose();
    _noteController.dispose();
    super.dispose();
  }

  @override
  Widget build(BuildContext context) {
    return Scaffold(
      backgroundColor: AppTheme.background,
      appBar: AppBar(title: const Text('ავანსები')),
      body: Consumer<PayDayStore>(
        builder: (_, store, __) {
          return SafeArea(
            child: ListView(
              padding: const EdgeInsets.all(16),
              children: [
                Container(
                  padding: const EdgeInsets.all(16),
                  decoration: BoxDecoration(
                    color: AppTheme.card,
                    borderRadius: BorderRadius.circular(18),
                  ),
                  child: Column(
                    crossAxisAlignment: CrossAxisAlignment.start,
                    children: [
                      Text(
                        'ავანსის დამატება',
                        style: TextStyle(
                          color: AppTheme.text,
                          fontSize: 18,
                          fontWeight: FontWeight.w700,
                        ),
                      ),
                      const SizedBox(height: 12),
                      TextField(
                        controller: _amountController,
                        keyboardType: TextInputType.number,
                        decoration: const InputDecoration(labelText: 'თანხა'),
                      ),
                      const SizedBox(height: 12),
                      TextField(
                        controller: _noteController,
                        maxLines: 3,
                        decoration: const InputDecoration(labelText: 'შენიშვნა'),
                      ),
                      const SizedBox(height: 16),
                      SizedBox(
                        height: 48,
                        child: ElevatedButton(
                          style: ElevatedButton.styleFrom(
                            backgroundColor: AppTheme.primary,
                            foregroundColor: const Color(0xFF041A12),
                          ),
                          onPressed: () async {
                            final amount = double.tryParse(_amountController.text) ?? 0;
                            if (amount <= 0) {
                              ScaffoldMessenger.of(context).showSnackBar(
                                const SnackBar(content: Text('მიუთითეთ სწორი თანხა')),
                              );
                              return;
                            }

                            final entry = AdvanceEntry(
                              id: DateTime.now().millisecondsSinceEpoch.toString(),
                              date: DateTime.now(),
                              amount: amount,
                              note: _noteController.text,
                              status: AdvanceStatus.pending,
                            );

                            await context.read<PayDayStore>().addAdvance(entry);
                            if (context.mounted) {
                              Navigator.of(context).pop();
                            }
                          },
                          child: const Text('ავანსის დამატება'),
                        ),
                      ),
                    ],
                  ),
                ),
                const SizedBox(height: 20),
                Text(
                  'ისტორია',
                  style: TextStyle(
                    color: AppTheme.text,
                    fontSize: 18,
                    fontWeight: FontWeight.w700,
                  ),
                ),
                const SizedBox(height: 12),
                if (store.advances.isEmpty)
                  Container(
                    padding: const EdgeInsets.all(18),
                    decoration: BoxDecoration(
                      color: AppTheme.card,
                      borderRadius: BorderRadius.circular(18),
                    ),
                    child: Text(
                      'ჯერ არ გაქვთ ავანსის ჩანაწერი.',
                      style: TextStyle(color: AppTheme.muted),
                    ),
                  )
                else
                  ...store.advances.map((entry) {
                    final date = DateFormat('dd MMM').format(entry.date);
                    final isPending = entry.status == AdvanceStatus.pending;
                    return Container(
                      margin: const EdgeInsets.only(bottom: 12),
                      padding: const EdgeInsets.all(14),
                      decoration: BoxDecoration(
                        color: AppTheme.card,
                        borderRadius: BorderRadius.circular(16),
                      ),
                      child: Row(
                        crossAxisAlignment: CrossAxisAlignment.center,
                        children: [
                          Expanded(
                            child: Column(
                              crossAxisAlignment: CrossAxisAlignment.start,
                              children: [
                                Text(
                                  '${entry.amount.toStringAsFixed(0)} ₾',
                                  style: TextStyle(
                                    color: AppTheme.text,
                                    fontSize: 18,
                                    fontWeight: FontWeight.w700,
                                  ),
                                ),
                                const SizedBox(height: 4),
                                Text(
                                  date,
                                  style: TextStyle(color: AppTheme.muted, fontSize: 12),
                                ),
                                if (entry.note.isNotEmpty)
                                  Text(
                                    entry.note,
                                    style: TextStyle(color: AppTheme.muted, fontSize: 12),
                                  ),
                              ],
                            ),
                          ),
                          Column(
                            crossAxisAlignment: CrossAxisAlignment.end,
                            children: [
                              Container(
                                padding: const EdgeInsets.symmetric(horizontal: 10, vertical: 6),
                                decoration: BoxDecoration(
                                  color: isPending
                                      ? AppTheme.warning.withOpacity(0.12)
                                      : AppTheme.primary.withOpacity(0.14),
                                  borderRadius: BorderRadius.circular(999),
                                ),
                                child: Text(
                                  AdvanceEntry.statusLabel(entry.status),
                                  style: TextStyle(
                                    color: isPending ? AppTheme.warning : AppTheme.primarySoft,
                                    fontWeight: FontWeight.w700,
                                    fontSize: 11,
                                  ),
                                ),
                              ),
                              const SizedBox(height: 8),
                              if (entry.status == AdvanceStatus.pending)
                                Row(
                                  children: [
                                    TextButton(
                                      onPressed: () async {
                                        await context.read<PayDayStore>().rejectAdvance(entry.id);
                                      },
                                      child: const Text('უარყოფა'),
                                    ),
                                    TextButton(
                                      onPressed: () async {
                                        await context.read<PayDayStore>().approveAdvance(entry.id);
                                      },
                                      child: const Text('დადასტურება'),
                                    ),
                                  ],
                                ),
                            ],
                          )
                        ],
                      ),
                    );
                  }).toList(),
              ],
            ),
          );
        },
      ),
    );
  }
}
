@@ -1,0 +1,196 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../main.dart';
+import '../models/work_day.dart';
+import '../theme/app_theme.dart';
+
+class AddWorkdayPage extends StatefulWidget {
+  const AddWorkdayPage({super.key});
+
+  @override
+  State<AddWorkdayPage> createState() => _AddWorkdayPageState();
+}
+
+class _AddWorkdayPageState extends State<AddWorkdayPage> {
+  final _dateController = TextEditingController();
+  final _startController = TextEditingController(text: '09:00');
+  final _endController = TextEditingController(text: '17:00');
+  final _rateController = TextEditingController(text: '60');
+  final _noteController = TextEditingController();
+
+  @override
+  void dispose() {
+    _dateController.dispose();
+    _startController.dispose();
+    _endController.dispose();
+    _rateController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    if (_dateController.text.isEmpty) {
+      _dateController.text = DateFormat('yyyy-MM-dd').format(now);
+    }
+
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(title: const Text('დღის დამატება')),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: ListView(
+            children: [
+              _Field(
+                label: 'თარიღი',
+                child: TextField(
+                  controller: _dateController,
+                  decoration: const InputDecoration(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _Field(
+                      label: 'დაწყება',
+                      child: TextField(
+                        controller: _startController,
+                        decoration: const InputDecoration(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _Field(
+                      label: 'დასრულება',
+                      child: TextField(
+                        controller: _endController,
+                        decoration: const InputDecoration(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _Field(
+                      label: 'საათობრივი განაკვეთი',
+                      child: TextField(
+                        controller: _rateController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _Field(
+                      label: 'საათები',
+                      child: TextField(
+                        enabled: false,
+                        decoration: InputDecoration(
+                          hintText: _calculateHours().toStringAsFixed(1),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _Field(
+                label: 'შენიშვნა',
+                child: TextField(
+                  controller: _noteController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: const Color(0xFF041A12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: () async {
+                    final date = DateTime.tryParse(_dateController.text);
+                    if (date == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('შეცდომა — შეიყვანეთ მართებული თარიღი')),
+                      );
+                      return;
+                    }
+
+                    final hours = _calculateHours();
+                    final rate = double.tryParse(_rateController.text) ?? 0;
+                    final total = hours * rate;
+
+                    final day = WorkDay(
+                      date: date,
+                      startTime: _startController.text,
+                      endTime: _endController.text,
+                      hours: hours,
+                      rate: rate,
+                      total: total,
+                      note: _noteController.text,
+                    );
+
+                    await context.read<PayDayStore>().addWorkDay(day);
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('შენახვა'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  double _calculateHours() {
+    return WorkDay.calculateHours(
+      _startController.text,
+      _endController.text,
+    );
+  }
+}
+
+class _Field extends StatelessWidget {
+  const _Field({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: AppTheme.muted,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        child,
+      ],
+    );
+  }
+}
