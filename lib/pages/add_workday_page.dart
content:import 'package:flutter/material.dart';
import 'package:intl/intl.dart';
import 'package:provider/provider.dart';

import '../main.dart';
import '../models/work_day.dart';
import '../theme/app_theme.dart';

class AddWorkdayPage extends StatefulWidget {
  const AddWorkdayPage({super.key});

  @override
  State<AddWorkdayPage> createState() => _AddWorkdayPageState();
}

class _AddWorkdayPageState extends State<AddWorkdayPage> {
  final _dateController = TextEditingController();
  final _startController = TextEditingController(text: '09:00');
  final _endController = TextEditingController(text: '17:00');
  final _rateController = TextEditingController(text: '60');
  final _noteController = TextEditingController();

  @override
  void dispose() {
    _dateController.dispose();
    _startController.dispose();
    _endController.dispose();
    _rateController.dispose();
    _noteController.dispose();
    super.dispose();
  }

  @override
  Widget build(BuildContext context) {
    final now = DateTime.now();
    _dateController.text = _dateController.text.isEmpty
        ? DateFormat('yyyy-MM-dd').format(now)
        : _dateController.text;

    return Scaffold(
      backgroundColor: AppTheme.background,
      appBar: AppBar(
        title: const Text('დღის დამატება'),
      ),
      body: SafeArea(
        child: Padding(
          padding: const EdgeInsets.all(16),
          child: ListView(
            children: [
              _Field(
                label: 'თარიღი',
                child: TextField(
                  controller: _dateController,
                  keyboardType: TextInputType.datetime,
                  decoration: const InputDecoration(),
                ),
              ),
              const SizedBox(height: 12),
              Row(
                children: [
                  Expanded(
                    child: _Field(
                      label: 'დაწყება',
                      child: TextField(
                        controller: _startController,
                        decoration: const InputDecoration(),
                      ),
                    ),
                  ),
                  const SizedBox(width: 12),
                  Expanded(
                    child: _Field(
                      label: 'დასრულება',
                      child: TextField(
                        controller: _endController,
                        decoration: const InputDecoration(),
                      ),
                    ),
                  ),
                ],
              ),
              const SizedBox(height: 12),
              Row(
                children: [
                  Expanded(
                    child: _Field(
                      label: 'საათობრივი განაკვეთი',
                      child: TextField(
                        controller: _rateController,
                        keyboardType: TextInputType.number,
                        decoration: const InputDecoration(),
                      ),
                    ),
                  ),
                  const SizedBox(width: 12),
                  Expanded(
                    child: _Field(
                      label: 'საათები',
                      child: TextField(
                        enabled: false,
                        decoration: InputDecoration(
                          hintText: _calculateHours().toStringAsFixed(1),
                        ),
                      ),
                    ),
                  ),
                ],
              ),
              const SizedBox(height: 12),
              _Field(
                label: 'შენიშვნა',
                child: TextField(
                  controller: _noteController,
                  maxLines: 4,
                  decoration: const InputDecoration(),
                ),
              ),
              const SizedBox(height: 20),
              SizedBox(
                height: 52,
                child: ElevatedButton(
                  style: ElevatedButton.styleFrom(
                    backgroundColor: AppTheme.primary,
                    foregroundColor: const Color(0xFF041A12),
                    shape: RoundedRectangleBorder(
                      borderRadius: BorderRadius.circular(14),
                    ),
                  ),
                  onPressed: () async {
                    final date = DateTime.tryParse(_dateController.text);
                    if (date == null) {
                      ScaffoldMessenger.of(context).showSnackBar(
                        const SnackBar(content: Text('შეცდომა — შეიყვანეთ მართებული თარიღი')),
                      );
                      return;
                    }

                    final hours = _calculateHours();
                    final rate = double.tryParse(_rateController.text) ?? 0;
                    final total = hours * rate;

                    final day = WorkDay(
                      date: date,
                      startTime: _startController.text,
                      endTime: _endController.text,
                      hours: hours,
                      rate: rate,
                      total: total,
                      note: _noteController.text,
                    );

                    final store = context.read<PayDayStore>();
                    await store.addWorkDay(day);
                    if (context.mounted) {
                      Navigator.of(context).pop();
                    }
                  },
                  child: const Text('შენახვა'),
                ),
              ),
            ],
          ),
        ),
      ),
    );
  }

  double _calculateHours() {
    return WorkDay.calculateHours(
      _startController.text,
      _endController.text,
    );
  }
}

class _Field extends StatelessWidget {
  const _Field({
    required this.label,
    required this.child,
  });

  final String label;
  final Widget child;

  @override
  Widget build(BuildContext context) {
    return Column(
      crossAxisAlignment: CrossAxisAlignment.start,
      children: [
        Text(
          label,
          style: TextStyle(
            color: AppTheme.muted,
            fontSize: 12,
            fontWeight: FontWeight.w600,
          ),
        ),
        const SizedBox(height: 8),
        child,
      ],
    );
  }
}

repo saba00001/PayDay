@@ -1,0 +1,351 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../main.dart';
+import '../models/advance_entry.dart';
+import '../models/work_day.dart';
+import '../theme/app_theme.dart';
+
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<PayDayStore>(
+      builder: (_, store, __) {
+        final pending = store.pendingAdvances;
+        final earned = store.totalEarned;
+        final balance = store.balance;
+        final monthlyEarn = store.currentMonthDays.fold<double>(0, (sum, d) => sum + d.total);
+
+        return Scaffold(
+          backgroundColor: AppTheme.background,
+          appBar: AppBar(
+            title: const Text('PayDay'),
+            actions: [
+              IconButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const AddWorkdayPage(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.add_circle_outline),
+              ),
+            ],
+          ),
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
+              children: [
+                _SummaryCard(
+                  title: 'გამომუშავებული',
+                  value: '${_currency(earned)}',
+                  subtitle: '${store.workDays.length} სამუშაო დღე',
+                  accent: AppTheme.primary,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _SummaryCard(
+                        title: 'ავანსები',
+                        value: '${_currency(pending)}',
+                        subtitle: 'მოლოდინში',
+                        accent: AppTheme.warning,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _SummaryCard(
+                        title: 'ბალანსი',
+                        value: '${_currency(balance)}',
+                        subtitle: 'საბალანსო',
+                        accent: AppTheme.accent,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'მიმდინარე თვე',
+                  style: TextStyle(
+                    color: AppTheme.text,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.card,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: Colors.white.withOpacity(0.04)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'მიღებული',
+                            style: TextStyle(color: AppTheme.muted, fontSize: 12),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${_currency(monthlyEarn)}',
+                            style: TextStyle(
+                              color: AppTheme.text,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${store.currentMonthDays.length} დღე',
+                          style: TextStyle(
+                            color: AppTheme.primarySoft,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ActionButton(
+                        label: 'დღის დამატება',
+                        icon: Icons.calendar_today_outlined,
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const AddWorkdayPage(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _ActionButton(
+                        label: 'ავანსი',
+                        icon: Icons.account_balance_wallet_outlined,
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const AdvancesPage(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'ბოლო დღეები',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.text,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const HistoryPage(),
+                          ),
+                        );
+                      },
+                      child: const Text('ისტორია'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ...store.workDays.reversed.take(4).map((day) {
+                  final date = DateFormat('dd MMM').format(day.date);
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppTheme.card,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.04)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Icons.work_history, color: AppTheme.primary),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                date,
+                                style: TextStyle(
+                                  color: AppTheme.text,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${day.startTime} - ${day.endTime} • ${day.hours.toStringAsFixed(1)} სთ',
+                                style: TextStyle(color: AppTheme.muted, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          '${_currency(day.total)}',
+                          style: TextStyle(
+                            color: AppTheme.primarySoft,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                const SizedBox(height: 8),
+                if (store.workDays.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: AppTheme.card,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Text(
+                      'ჯერ არ გაქვთ სამუშაო დღეების ჩანაწერი. დაამატეთ პირველი დღე.',
+                      style: TextStyle(color: AppTheme.muted),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static String _currency(double value) {
+    return '${value.toStringAsFixed(0)} ₾';
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.accent,
+  });
+
+  final String title;
+  final String value;
+  final String subtitle;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(color: AppTheme.muted, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              color: accent,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: TextStyle(color: AppTheme.muted, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
+        decoration: BoxDecoration(
+          color: AppTheme.card,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withOpacity(0.04)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: AppTheme.primarySoft),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: AppTheme.text,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

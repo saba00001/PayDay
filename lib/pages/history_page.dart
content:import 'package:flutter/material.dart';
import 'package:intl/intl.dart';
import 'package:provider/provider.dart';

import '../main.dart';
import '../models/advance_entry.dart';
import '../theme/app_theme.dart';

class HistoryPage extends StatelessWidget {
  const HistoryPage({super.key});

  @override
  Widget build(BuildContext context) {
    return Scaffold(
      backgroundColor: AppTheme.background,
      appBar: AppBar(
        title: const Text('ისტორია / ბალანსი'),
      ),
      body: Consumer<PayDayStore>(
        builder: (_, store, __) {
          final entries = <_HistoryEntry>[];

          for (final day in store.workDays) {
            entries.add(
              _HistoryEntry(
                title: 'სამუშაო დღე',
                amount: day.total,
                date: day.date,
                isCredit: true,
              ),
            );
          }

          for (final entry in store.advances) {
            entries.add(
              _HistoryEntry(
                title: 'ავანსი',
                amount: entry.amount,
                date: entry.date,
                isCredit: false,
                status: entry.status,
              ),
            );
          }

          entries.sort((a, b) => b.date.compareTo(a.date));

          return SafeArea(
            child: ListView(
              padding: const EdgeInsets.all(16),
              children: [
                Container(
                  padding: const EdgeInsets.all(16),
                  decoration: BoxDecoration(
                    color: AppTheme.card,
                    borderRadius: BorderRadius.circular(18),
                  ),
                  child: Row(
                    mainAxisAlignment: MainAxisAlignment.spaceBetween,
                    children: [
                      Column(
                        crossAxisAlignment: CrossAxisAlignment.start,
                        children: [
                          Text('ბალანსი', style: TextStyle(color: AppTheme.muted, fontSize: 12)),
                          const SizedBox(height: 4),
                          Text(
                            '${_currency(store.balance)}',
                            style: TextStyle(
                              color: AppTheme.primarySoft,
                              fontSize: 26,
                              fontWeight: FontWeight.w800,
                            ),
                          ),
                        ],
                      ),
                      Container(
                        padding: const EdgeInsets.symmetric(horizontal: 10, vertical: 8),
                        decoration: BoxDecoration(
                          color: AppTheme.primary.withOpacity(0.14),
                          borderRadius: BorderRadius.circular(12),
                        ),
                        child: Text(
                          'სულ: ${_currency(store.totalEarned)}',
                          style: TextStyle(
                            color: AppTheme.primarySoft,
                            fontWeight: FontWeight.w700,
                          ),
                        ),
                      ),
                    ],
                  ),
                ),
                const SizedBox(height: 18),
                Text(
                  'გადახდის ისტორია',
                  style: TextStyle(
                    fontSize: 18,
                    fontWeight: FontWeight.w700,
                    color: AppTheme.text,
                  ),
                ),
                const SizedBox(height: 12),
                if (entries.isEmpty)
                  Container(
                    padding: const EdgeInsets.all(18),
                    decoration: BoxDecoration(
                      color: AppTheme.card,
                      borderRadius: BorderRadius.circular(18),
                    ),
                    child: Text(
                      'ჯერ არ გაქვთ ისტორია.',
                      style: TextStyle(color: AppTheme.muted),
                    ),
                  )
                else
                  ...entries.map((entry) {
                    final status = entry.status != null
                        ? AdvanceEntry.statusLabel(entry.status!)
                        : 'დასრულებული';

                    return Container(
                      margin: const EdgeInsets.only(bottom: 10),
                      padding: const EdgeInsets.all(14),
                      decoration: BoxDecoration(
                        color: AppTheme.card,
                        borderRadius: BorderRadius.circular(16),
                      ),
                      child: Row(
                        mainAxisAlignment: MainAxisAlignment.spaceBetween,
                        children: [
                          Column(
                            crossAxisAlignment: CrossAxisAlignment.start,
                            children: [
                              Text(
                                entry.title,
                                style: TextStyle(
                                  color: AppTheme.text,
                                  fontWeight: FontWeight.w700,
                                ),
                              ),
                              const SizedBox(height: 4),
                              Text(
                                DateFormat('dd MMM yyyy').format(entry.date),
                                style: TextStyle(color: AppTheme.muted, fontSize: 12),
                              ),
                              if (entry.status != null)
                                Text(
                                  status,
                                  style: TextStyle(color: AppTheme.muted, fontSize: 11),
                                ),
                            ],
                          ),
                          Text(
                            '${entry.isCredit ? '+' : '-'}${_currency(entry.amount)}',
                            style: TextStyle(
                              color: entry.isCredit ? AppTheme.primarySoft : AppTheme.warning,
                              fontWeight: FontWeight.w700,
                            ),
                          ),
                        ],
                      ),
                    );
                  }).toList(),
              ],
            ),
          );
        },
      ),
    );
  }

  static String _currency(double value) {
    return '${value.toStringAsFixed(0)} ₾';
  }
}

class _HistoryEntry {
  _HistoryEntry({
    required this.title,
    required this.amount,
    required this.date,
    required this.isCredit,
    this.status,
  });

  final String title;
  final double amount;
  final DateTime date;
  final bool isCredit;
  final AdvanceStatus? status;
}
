@@ -1,0 +1,217 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../main.dart';
+import '../models/advance_entry.dart';
+import '../theme/app_theme.dart';
+
+class AdvancesPage extends StatefulWidget {
+  const AdvancesPage({super.key});
+
+  @override
+  State<AdvancesPage> createState() => _AdvancesPageState();
+}
+
+class _AdvancesPageState extends State<AdvancesPage> {
+  final _amountController = TextEditingController(text: '200');
+  final _noteController = TextEditingController();
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(
+        title: const Text('ავანსები'),
+      ),
+      body: Consumer<PayDayStore>(
+        builder: (_, store, __) {
+          return SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.card,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ავანსის დამატება',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.text,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _amountController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'თანხა'),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _noteController,
+                        maxLines: 3,
+                        decoration: const InputDecoration(labelText: 'შენიშვნა'),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 48,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primary,
+                            foregroundColor: const Color(0xFF041A12),
+                          ),
+                          onPressed: () async {
+                            final amount = double.tryParse(_amountController.text) ?? 0;
+                            if (amount <= 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('მიუთითეთ სწორი თანხა')),
+                              );
+                              return;
+                            }
+
+                            final entry = AdvanceEntry(
+                              id: DateTime.now().millisecondsSinceEpoch.toString(),
+                              date: DateTime.now(),
+                              amount: amount,
+                              note: _noteController.text,
+                              status: AdvanceStatus.pending,
+                            );
+
+                            await context.read<PayDayStore>().addAdvance(entry);
+                            if (context.mounted) {
+                              Navigator.of(context).pop();
+                            }
+                          },
+                          child: const Text('ავანსის დამატება'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'ისტორია',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.text,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (store.advances.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppTheme.card,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Text(
+                      'ჯერ არ გაქვთ ავანსის ჩანაწერი.',
+                      style: TextStyle(color: AppTheme.muted),
+                    ),
+                  )
+                else
+                  ...store.advances.map((entry) {
+                    final date = DateFormat('dd MMM').format(entry.date);
+                    final isPending = entry.status == AdvanceStatus.pending;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppTheme.card,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${entry.amount.toStringAsFixed(0)} ₾',
+                                  style: TextStyle(
+                                    color: AppTheme.text,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  date,
+                                  style: TextStyle(color: AppTheme.muted, fontSize: 12),
+                                ),
+                                if (entry.note.isNotEmpty)
+                                  Text(
+                                    entry.note,
+                                    style: TextStyle(color: AppTheme.muted, fontSize: 12),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isPending
+                                      ? AppTheme.warning.withOpacity(0.12)
+                                      : AppTheme.primary.withOpacity(0.14),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  AdvanceEntry.statusLabel(entry.status),
+                                  style: TextStyle(
+                                    color: isPending ? AppTheme.warning : AppTheme.primarySoft,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              if (entry.status == AdvanceStatus.pending)
+                                Row(
+                                  children: [
+                                    TextButton(
+                                      onPressed: () async {
+                                        await context.read<PayDayStore>().rejectAdvance(entry.id);
+                                      },
+                                      child: const Text('უარყოფა'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () async {
+                                        await context.read<PayDayStore>().approveAdvance(entry.id);
+                                      },
+                                      child: const Text('დადასტურება'),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          )
+                        ],
+                      ),
+                    );
+                  }).toList(),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
